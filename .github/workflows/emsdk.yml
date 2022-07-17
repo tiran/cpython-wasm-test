@@ -1,0 +1,118 @@
+---
+name: EMSDK smoke tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron:  '30 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  distros:
+    name: "EMSDK ${{ matrix.emsdk_version }} on Python ${{ matrix.python_version }}, ${{ matrix.flavor }}"
+    runs-on: "ubuntu-latest"
+    strategy:
+      fail-fast: false
+      matrix:
+        emsdk_version:
+          - 3.1.15
+          - latest
+          # tot is tip-of-tree
+          - tot
+        python_version:
+          - 3.11
+          - main
+        flavor:
+          - node-dl
+          - node-pthreads
+          - browser
+        include:
+          - flavor: node-dl
+            runtests: true
+            configure_args: >-
+              --with-emscripten-target=node
+              --enable-wasm-dynamic-linking
+              --disable-wasm-pthreads
+          - flavor: node-pthreads
+            runtests: true
+            configure_args: >-
+              --with-emscripten-target=node
+              --disable-wasm-dynamic-linking
+              --enable-wasm-pthreads
+          - flavor: browser
+            runtests: false
+            configure_args: >-
+                --with-emscripten-target=browser
+                --enable-wasm-dynamic-linking
+                --disable-wasm-pthreads
+    steps:
+      - name: Install build dependencies
+        run: |
+          set -e
+          sudo apt-get update
+          sudo apt-get -yq install build-essential pkg-config ccache zlib1g-dev
+      - name: Set env vars
+        run: |
+          echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
+          echo "MAKEFLAGS=-j$(nproc)" >> $GITHUB_ENV
+          echo "CPYTHON_DIR=$GITHUB_WORKSPACE/cpython" >> $GITHUB_ENV
+          echo "EMSDK_DIR=$GITHUB_WORKSPACE/emsdk" >> $GITHUB_ENV
+      - name: Configure ccache action
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: py${{ matrix.python_version }}-emsdk$${{ matrix.emsdk_version }}
+      - name: Checkout EMSDK
+        uses: actions/checkout@v3
+        with:
+          repository: emscripten-core/emsdk
+          path: ${{ env.EMSDK_DIR }}
+          ref: main
+      - name: Checkout CPython
+        uses: actions/checkout@v3
+        with:
+          repository: python/cpython
+          path: ${{ env.CPYTHON_DIR }}
+          ref: "${{ matrix.python_version }}"
+      - name: Install EMSDK ${{ matrix.emsdk_version }}
+        run: $EMSDK_DIR/emsdk install ${{ matrix.emsdk_version }}
+      - name: Activate EMSDK ${{ matrix.emsdk_version }}
+        run: $EMSDK_DIR/emsdk activate ${{ matrix.emsdk_version }}
+      - name: Build "build" Python
+        run: |
+          set -e
+          mkdir -p $CPYTHON_DIR/builddir/build
+          cd $CPYTHON_DIR/builddir/build
+          ../../configure -C
+          make -j$(nproc)
+      - name: Build "host" Python
+        run: |
+          set -ex
+          . $EMSDK_DIR/emsdk_env.sh
+          export EM_COMPILER_WRAPPER=ccache
+          mkdir -p $CPYTHON_DIR/builddir/host
+          cd $CPYTHON_DIR/builddir/host
+          embuilder build zlib bzip2 sqlite3
+          CONFIG_SITE=../../Tools/wasm/config.site-wasm32-emscripten \
+              emconfigure ../../configure -C \
+                --build=$(../../config.guess) \
+                --host=wasm32-unknown-emscripten \
+                --with-build-python=$(pwd)/../build/python \
+                ${{ matrix.configure_args }}
+          emmake make
+      - name: Run pythoninfo
+        run: |
+          set -e
+          . $EMSDK_DIR/emsdk_env.sh
+          make -C $CPYTHON_DIR/builddir/host pythoninfo
+        if: "${{ matrix.runtests == true }}"
+      - name: Run tests
+        run: |
+          set -e
+          . $EMSDK_DIR/emsdk_env.sh
+          make -C $CPYTHON_DIR/builddir/host buildbottest
+        if: "${{ matrix.runtests == true }}"
