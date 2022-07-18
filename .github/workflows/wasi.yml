@@ -1,0 +1,120 @@
+---
+name: WASI SDK smoke tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  wasi:
+    name: "WASI SDK ${{ matrix.wasisdk_version }} on Python ${{ matrix.python_version }}, wasmtime ${{ matrix.wasmtime_version }}"
+    runs-on: "ubuntu-latest"
+    strategy:
+      fail-fast: false
+      matrix:
+        wasisdk_version:
+          - "16"
+        python_version:
+          - "3.11"
+          - "main"
+        wasmtime_version:
+          - "v0.38.0"
+          - "latest"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install build dependencies
+        run: |
+          set -e
+          sudo apt-get update
+          sudo apt-get -yq install build-essential pkg-config ccache zlib1g-dev curl
+      - name: Set env vars
+        run: |
+          echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
+          echo "MAKEFLAGS=-j$(nproc)" >> $GITHUB_ENV
+          echo "CPYTHON_DIR=$GITHUB_WORKSPACE/cpython" >> $GITHUB_ENV
+          echo "WASI_SDK=/opt/wasi-sdk" >> $GITHUB_ENV
+          echo "WASIX_DIR=/opt/wasix" >> $GITHUB_ENV
+      - name: Configure ccache action
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: py${{ matrix.python_version }}-wasi$${{ matrix.wasisdk_version }}
+      - name: Install WASI SDK ${{ matrix.wasisdk_version }}
+        run: |
+          set -e
+          curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${{ matrix.wasisdk_version }}/wasi-sdk-${{ matrix.wasisdk_version }}.0-linux.tar.gz | sudo tar -xz -C /opt
+          sudo mv /opt/wasi-sdk-${{ matrix.wasisdk_version }}.0 $WASI_SDK
+          echo "PATH=$WASI_SDK/bin:$PATH" >> $GITHUB_ENV
+      - name: Fetch WASIX
+        uses: actions/checkout@v3
+        with:
+          repository: singlestore-labs/wasix
+          path: wasix
+      - name: Build and install WASIX
+        run: |
+          set -e
+          cd wasix
+          make
+          sudo make install
+      - name: Install wasmtime
+        run: |
+          set -e
+          curl https://wasmtime.dev/install.sh -sSf -o install-wasmtime.sh
+          chmod +x install-wasmtime.sh
+          ./install-wasmtime.sh --version ${{ matrix.wasmtime_version }}
+          echo "PATH=$HOME/.wasmtime/bin:$PATH" >> $GITHUB_ENV
+      - name: Check wasmtime
+        run: wasmtime --version
+      - name: Checkout CPython
+        uses: actions/checkout@v3
+        with:
+          repository: python/cpython
+          path: ${{ env.CPYTHON_DIR }}
+          ref: "${{ matrix.python_version }}"
+      - name: Build "build" Python
+        run: |
+          set -e
+          mkdir -p $CPYTHON_DIR/builddir/build
+          cd $CPYTHON_DIR/builddir/build
+          ../../configure -C
+          make -j$(nproc)
+      - name: Build "host" Python
+        run: |
+          set -ex
+
+          export CC="ccache ${WASI_SDK}/bin/clang"
+          export LDSHARED="${WASI_SDK}/bin/wasm-ld"
+          export AR="${WASI_SDK}/bin/llvm-ar"
+
+          export CFLAGS="-isystem ${WASIX_DIR}/include"
+          export LDFLAGS="-L${WASIX_DIR}/lib -lwasix"
+
+          export PKG_CONFIG_PATH=
+          export PKG_CONFIG_SYSROOT_DIR=$WASI_SDK/share/wasi-sysroot
+          export PKG_CONFIG_LIBDIR=$PKG_CONFIG_SYSROOT_DIR/lib/pkgconfig:$PKG_CONFIG_SYSROOT_DIR/share/pkgconfig
+
+          mkdir -p $CPYTHON_DIR/builddir/host
+          cd $CPYTHON_DIR/builddir/host
+
+          CONFIG_SITE=../../Tools/wasm/config.site-wasm32-wasi \
+          ../../configure -C \
+            --host=wasm32-unknown-wasi \
+            --build=$(../../config.guess) \
+            --with-build-python=$(pwd)/../build/python \
+            --disable-ipv6
+
+          make -j$(nproc)
+          
+          # sentinel for getpath.py
+          touch $CPYTHON_DIR/Modules/Setup.local
+      - name: Run pythoninfo
+        run: make -C $CPYTHON_DIR/builddir/host pythoninfo
+      - name: Run tests
+        run: make -C $CPYTHON_DIR/builddir/host buildbottest
