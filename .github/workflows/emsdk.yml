@@ -23,7 +23,7 @@ jobs:
           - "3.1.15"
           - latest
           # tot is tip-of-tree
-          - tot
+          - tot-upstream
         python_version:
           - "3.11"
           - "main"
