@@ -118,3 +118,49 @@ jobs:
         run: make -C $CPYTHON_DIR/builddir/host pythoninfo
       - name: Run tests
         run: make -C $CPYTHON_DIR/builddir/host buildbottest
+      - name: Copy stdlib
+        run: |
+          set -e
+          pushd $CPYTHON_DIR/builddir/host
+          git --git-dir=$CPYTHON_DIR/.git rev-parse HEAD > commit.txt
+          cp $CPYTHON_DIR/LICENSE .
+          cp -R $CPYTHON_DIR/Lib .
+          rm -rf Lib/curses Lib/ctypes/test/ Lib/ensurepip/ Lib/distutils/
+          rm -rf Lib/lib2to3/ Lib/idlelib/ Lib/test/ Lib/multiprocessing/
+          rm -rf Lib/tkinter/ Lib/turtledemo/ Lib/venv/ Lib/unittest/test/
+          find -name __pycache__ | xargs rm -rf
+          popd
+        if: "${{ matrix.wasmtime_version == 'latest' }}"
+      - name: "Upload WASI artifacts"
+        uses: actions/upload-artifact@v2
+        with:
+          name: wasi-py_${{ matrix.python_version }}-wasi_${{ matrix.wasisdk_version }}
+          retention-days: 7
+          path: |
+            ${{ env.CPYTHON_DIR }}/builddir/host/LICENSE
+            ${{ env.CPYTHON_DIR }}/builddir/host/commit.txt
+            ${{ env.CPYTHON_DIR }}/builddir/host/python.wasm
+            ${{ env.CPYTHON_DIR }}/builddir/host/pybuilddir.txt
+            ${{ env.CPYTHON_DIR }}/builddir/host/build/lib.wasi-wasm32-3.*/_sysconfigdata__wasi_wasm32-wasi.py
+            ${{ env.CPYTHON_DIR }}/builddir/host/Lib/
+          if-no-files-found: error        
+        if: "${{ matrix.wasmtime_version == 'latest' }}"
+      - name: "Upload build artifacts"
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-wasi-py_${{ matrix.python_version }}-wasi_${{ matrix.wasisdk_version }}
+          retention-days: 7
+          path: |
+            ${{ env.CPYTHON_DIR }}/builddir/host/config.log
+            ${{ env.CPYTHON_DIR }}/builddir/host/config.cache
+            ${{ env.CPYTHON_DIR }}/builddir/host/Makefile
+            ${{ env.CPYTHON_DIR }}/builddir/host/pyconfig.h
+            ${{ env.CPYTHON_DIR }}/builddir/host/libpython*.a
+            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/Setup.local
+            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/Setup.stdlib
+            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/config.c
+            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/_decimal/libmpdec/libmpdec.a
+            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/expat/libexpat.a
+            ${{ env.CPYTHON_DIR }}/builddir/host/Programs/python.o
+          if-no-files-found: error
+        if: "${{ matrix.wasmtime_version == 'latest' }}"
