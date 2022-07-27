@@ -41,7 +41,6 @@ jobs:
           echo "MAKEFLAGS=-j$(nproc)" >> $GITHUB_ENV
           echo "CPYTHON_DIR=$GITHUB_WORKSPACE/cpython" >> $GITHUB_ENV
           echo "WASI_SDK=/opt/wasi-sdk" >> $GITHUB_ENV
-          echo "WASIX_DIR=/opt/wasix" >> $GITHUB_ENV
       - name: Configure ccache action
         uses: hendrikmuhs/ccache-action@v1
         with:
@@ -89,26 +88,15 @@ jobs:
         run: |
           set -ex
 
-          export CC="ccache ${WASI_SDK}/bin/clang"
-          export LDSHARED="${WASI_SDK}/bin/wasm-ld"
-          export AR="${WASI_SDK}/bin/llvm-ar"
-
-          export CFLAGS="-isystem ${WASIX_DIR}/include"
-          export LDFLAGS="-L${WASIX_DIR}/lib -lwasix"
-
-          export PKG_CONFIG_PATH=
-          export PKG_CONFIG_SYSROOT_DIR=$WASI_SDK/share/wasi-sysroot
-          export PKG_CONFIG_LIBDIR=$PKG_CONFIG_SYSROOT_DIR/lib/pkgconfig:$PKG_CONFIG_SYSROOT_DIR/share/pkgconfig
-
           mkdir -p $CPYTHON_DIR/builddir/host
           cd $CPYTHON_DIR/builddir/host
 
           CONFIG_SITE=../../Tools/wasm/config.site-wasm32-wasi \
-          ../../configure -C \
-            --host=wasm32-unknown-wasi \
-            --build=$(../../config.guess) \
-            --with-build-python=$(pwd)/../build/python \
-            --disable-ipv6
+            ../../Tools/wasm/wasi-env \
+            ../../configure -C \
+              --host=wasm32-unknown-wasi \
+              --build=$(../../config.guess) \
+              --with-build-python=$(pwd)/../build/python
 
           make -j$(nproc)
           
