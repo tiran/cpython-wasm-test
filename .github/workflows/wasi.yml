@@ -1,10 +1,10 @@
 ---
-name: WASI SDK smoke tests
+name: WASI SDK nightly tests
 
 on:
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
   pull_request:
     branches:
       - main
@@ -27,6 +27,13 @@ jobs:
         wasmtime_version:
           - "v0.39.1"
           - "latest"
+        include:
+          - python_version: "3.11"
+            python_name: "3.11"
+            python_libdir: "lib/python3.11"
+          - python_version: "main"
+            python_name: "3.12-dev"
+            python_libdir: "lib/python3.12"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -99,30 +106,36 @@ jobs:
               --with-build-python=$(pwd)/../build/python
 
           make -j$(nproc)
-          
+
           # sentinel for getpath.py
           touch $CPYTHON_DIR/Modules/Setup.local
       - name: Run pythoninfo
         run: make -C $CPYTHON_DIR/builddir/host pythoninfo
       - name: Run tests
         run: make -C $CPYTHON_DIR/builddir/host buildbottest
-      - name: Copy stdlib
+      - name: Copy license, create commit.txt
         run: |
           set -e
           pushd $CPYTHON_DIR/builddir/host
           git --git-dir=$CPYTHON_DIR/.git rev-parse HEAD > commit.txt
           cp $CPYTHON_DIR/LICENSE .
-          cp -R $CPYTHON_DIR/Lib .
-          rm -rf Lib/curses Lib/ctypes/test/ Lib/ensurepip/ Lib/distutils/
-          rm -rf Lib/lib2to3/ Lib/idlelib/ Lib/test/ Lib/multiprocessing/
-          rm -rf Lib/tkinter/ Lib/turtledemo/ Lib/venv/ Lib/unittest/test/
+          popd
+      - name: Copy stdlib
+        run: |
+          set -e
+          mkdir -p $CPYTHON_DIR/builddir/host/${{ matrix.python_libdir }}
+          pushd $CPYTHON_DIR/builddir/host/${{ matrix.python_libdir }}
+          cp -R $CPYTHON_DIR/Lib/* .
+          rm -rf curses/ ctypes/test/ ensurepip/ distutils/
+          rm -rf lib2to3/ idle/ test/ multiprocessing/
+          rm -rf tkinter/ turtledemo/ venv/ unittest/test/
           find -name __pycache__ | xargs rm -rf
           popd
         if: "${{ matrix.wasmtime_version == 'latest' }}"
       - name: "Upload WASI artifacts"
         uses: actions/upload-artifact@v2
         with:
-          name: wasi-py_${{ matrix.python_version }}-wasi_${{ matrix.wasisdk_version }}
+          name: wasi_py${{ matrix.python_name }}_wasisdk-${{ matrix.wasisdk_version }}
           retention-days: 7
           path: |
             ${{ env.CPYTHON_DIR }}/builddir/host/LICENSE
@@ -130,13 +143,13 @@ jobs:
             ${{ env.CPYTHON_DIR }}/builddir/host/python.wasm
             ${{ env.CPYTHON_DIR }}/builddir/host/pybuilddir.txt
             ${{ env.CPYTHON_DIR }}/builddir/host/build/lib.wasi-wasm32-3.*/_sysconfigdata__wasi_wasm32-wasi.py
-            ${{ env.CPYTHON_DIR }}/builddir/host/Lib/
-          if-no-files-found: error        
+            ${{ env.CPYTHON_DIR }}/builddir/host/${{ matrix.python_libdir }}
+          if-no-files-found: error
         if: "${{ matrix.wasmtime_version == 'latest' }}"
       - name: "Upload build artifacts"
         uses: actions/upload-artifact@v2
         with:
-          name: build-wasi-py_${{ matrix.python_version }}-wasi_${{ matrix.wasisdk_version }}
+          name: build-wasi_py${{ matrix.python_name }}_wasisdk-${{ matrix.wasisdk_version }}
           retention-days: 7
           path: |
             ${{ env.CPYTHON_DIR }}/builddir/host/config.log
@@ -151,4 +164,5 @@ jobs:
             ${{ env.CPYTHON_DIR }}/builddir/host/Modules/expat/libexpat.a
             ${{ env.CPYTHON_DIR }}/builddir/host/Programs/python.o
           if-no-files-found: error
-        if: "${{ matrix.wasmtime_version == 'latest' }}"
+        # if: "${{ matrix.wasmtime_version == 'latest' }}"
+        if: false
