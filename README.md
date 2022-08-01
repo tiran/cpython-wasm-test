@@ -12,7 +12,7 @@ files into a subdirectory, e.g.
 
 ## Emscripten build artifacts
 
-(Emscripten nightly tests)[https://github.com/tiran/cpython-wasm-test/actions/workflows/emsdk.yml]
+[Emscripten nightly tests](https://github.com/tiran/cpython-wasm-test/actions/workflows/emsdk.yml)
 
 The `emsdk-tot-upstream` builds are using Emscripte tip-of-tree (nightlies).
 
@@ -27,16 +27,20 @@ access the browser REPL from http://localhost:8000/python.html
 
 ### Emscripte NodeJS target
 
-- `emscripten-node-dl_py3.12-dev_emsdk-latest`: WASM dynamic linking, Python
-  main branch (3.12-dev), latest Emscripten SDK
 - `emscripten-node-dl_py3.11_emsdk-latest`: WASM dynamic linking, Python
   3.11 branch, latest Emscripten SDK
+- `emscripten-node-dl_py3.12-dev_emsdk-latest`: WASM dynamic linking, Python
+  main branch (3.12-dev), latest Emscripten SDK
 - `emscripten-node-pthreads_py3.12-dev_emsdk-latest`: WASM pthreads emulation,
   Python main branch (3.12-dev), latest Emscripten SDK
 - `emscripten-node-pthreads_py3.11_emsdk-latest`: WASM pthreads emulation,
   Python 3.11 branch, latest Emscripten SDK
 
-Run: `node python.js`
+Run:
+
+```shell
+node python.js
+```
 
 You may have to specify `--experimental-wasm-bigint` for older Node versions and
 `--experimental-wasm-threads --experimental-wasm-bulk-memory` for pthread builds.
@@ -44,12 +48,16 @@ You may have to specify `--experimental-wasm-bigint` for older Node versions and
 
 ## WASI build artifacts
 
-(WASI nightly tests)[https://github.com/tiran/cpython-wasm-test/actions/workflows/wasi.yml]
+[WASI nightly tests](https://github.com/tiran/cpython-wasm-test/actions/workflows/wasi.yml)
 
 - `wasi_py3.11_wasisdk-16`: Python 3.11 with WASI-SDK 16
 - `wasi_py3.12-dev_wasisdk-16`: Python main branch (3.12-dev) with WASI-SDK 16
 
-Run: `wasmtime run --dir . -- python.wasm`
+Run:
+
+```shell
+wasmtime run --dir . -- python.wasm
+```
 
 Needs a recent version of [wasmtime](https://wasmtime.dev/).
 
