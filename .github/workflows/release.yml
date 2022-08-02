@@ -1,0 +1,142 @@
+---
+name: Create release
+
+on:
+  workflow_dispatch:
+    inputs:
+      python_tag:
+        required: true
+        default: "v3.11.0b5"
+        description: "Python release tag"
+      emsdk_version:
+        required: true
+        default: "3.1.18"
+        description: "Emscripten SDK version"
+      wasisdk_version:
+        required: true
+        default: "16"
+        description: "WASI SDK version"
+      prerelease:
+        required: true
+        type: boolean
+        default: true
+        description: "Is this a pre-release?"
+      wasmtime_version:
+        required: true
+        default: "latest"
+        description: "wasmtime version (for testing)"
+
+jobs:
+  create_release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: true
+          prerelease: ${{ inputs.prerelease }}
+          release_name: ${{ inputs.python_tag }}
+          tag_name: ${{ inputs.python_tag }}
+          body: "Unofficial WASM builds for Python ${{ inputs.python_tag }}"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  wasi:
+    name: "WASI SDK ${{ inputs.wasisdk_version }} on Python ${{ inputs.python_tag }}"
+    runs-on: "ubuntu-latest"
+    needs: create_release
+    steps:
+      - uses: actions/checkout@v2
+      - name: "Clone and build 'build' Python ${{ inputs.python_tag }}"
+        uses: ./.github/actions/common_setup
+        id: common
+        with:
+          python_version: "${{ inputs.python_tag }}"
+          cache_suffix: "wasi${{ inputs.wasisdk_version }}"
+      - name: Install WASI SDK & wasmtime
+        uses: ./.github/actions/install_wasi
+        id: install
+        with:
+          wasisdk_version: "${{ inputs.wasisdk_version }}"
+          wasmtime_version: "${{ inputs.wasmtime_version }}"
+      - name: "Build ${{ inputs.python_version }}"
+        uses: ./.github/actions/build_wasi
+        id: build
+        with:
+          wasisdk_version: "${{ inputs.wasisdk_version }}"
+          wasmtime_version: "${{ inputs.wasmtime_version }}"
+      - name: Run pythoninfo
+        shell: bash
+        working-directory: "${{ env.HOST_PYTHON_DIR }}"
+        run: make pythoninfo
+      - name: "Package ${{ matrix.python_version }}"
+        uses: ./.github/actions/package_wasi
+        id: package
+        with:
+          wasisdk_version: "${{ inputs.wasisdk_version }}"
+      - name: Upload artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.package.output.release_zipfile }}
+          asset_name: ${{ steps.package.output.release_name }}.zip
+          asset_content_type: application/zip
+
+  emsdk:
+    name: "EMSDK ${{ inputs.emsdk_version }} on Python ${{ inputs.python_tag }}, ${{ matrix.flavor }}"
+    runs-on: "ubuntu-latest"
+    needs: create_release
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor:
+          - node-dl
+          - node-pthreads
+          - browser
+    steps:
+      - uses: actions/checkout@v2
+      - name: "Clone and build 'build' Python ${{ inputs.python_tag }}"
+        uses: ./.github/actions/common_setup
+        id: common
+        with:
+          python_version: "${{ inputs.python_tag }}"
+          cache_suffix: "emsdk${{ inputs.emsdk_version }}"
+      - name: "Install Emscripten ${{ inputs.emsdk_version }}"
+        uses: ./.github/actions/install_emsdk
+        id: install
+        with:
+          emsdk_version: "${{ inputs.emsdk_version }}"
+      - name: "Build ${{ inputs.python_tag }} ${{ matrix.flavor }}"
+        uses: ./.github/actions/build_emscripten
+        id: build
+        with:
+          emsdk_version: "${{ inputs.emsdk_version }}"
+          flavor: "${{ matrix.flavor }}"
+      - name: Run pythoninfo
+        shell: bash
+        working-directory: "${{ env.HOST_PYTHON_DIR }}"
+        run: |
+          set -e
+          . $EMSDK_DIR/emsdk_env.sh
+          make pythoninfo
+        if: "${{ matrix.flavor != 'browser' }}"
+      - name: "Package ${{ matrix.python_version }} ${{ matrix.flavor }}"
+        uses: ./.github/actions/package_emscripten
+        id: package
+        with:
+          emsdk_version: "${{ matrix.emsdk_version }}"
+          flavor: "${{ matrix.flavor }}"
+      - name: Upload artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.package.output.release_zipfile }}
+          asset_name: ${{ steps.package.output.release_name }}.zip
+          asset_content_type: application/zip

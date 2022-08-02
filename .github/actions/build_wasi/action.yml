@@ -1,0 +1,43 @@
+---
+name: "Build, test, package WASI"
+description: |
+  Build, test, and package on WASI
+inputs:
+  wasisdk_version:
+    required: true
+    description: "WASI SDK version"
+  wasmtime_version:
+    required: true
+    default: "latest"
+    description: "wasmtime version"
+  configure_args:
+    required: false
+    description: "Extra args for configure script"
+runs:
+  using: "composite"
+  steps:
+    - name: Build "host" Python
+      shell: bash
+      working-directory: "${{ env.HOST_PYTHON_DIR }}"
+      run: |
+        set -ex
+        CONFIG_SITE=${CPYTHON_DIR}/Tools/wasm/config.site-wasm32-wasi \
+          HOSTRUNNER="wasmtime run --dir . --" \
+          ${CPYTHON_DIR}/Tools/wasm/wasi-env \
+          ${CPYTHON_DIR}/configure -C \
+            --host=wasm32-unknown-wasi \
+            --build=$(${CPYTHON_DIR}/config.guess) \
+            --with-build-python=${BUILD_PYTHON_DIR}/python \
+            ${{ inputs.configure_args }}
+
+        make -j$(nproc)
+
+        # sentinel for getpath.py
+        touch Modules/Setup.local
+
+        # copy stdlib to lib/python3.x/
+        mkdir -p $PYLIBDIR
+        pushd $PYLIBDIR
+        cp -a $CPYTHON_DIR/Lib/* .
+        cp $HOST_PYTHON_DIR/build/lib.wasi-wasm32-3.*/_sysconfigdata*.py .
+        popd

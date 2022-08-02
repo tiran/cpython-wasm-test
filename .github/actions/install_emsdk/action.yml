@@ -1,0 +1,27 @@
+---
+name: "Install Emscripten SDK"
+description: |
+  Install EMSDK
+inputs:
+  emsdk_version:
+    required: true
+    description: "Emscripten SDK version"
+runs:
+  using: "composite"
+  steps:
+    - name: Set env vars
+      shell: bash
+      run: |
+        echo "EMSDK_DIR=$GITHUB_WORKSPACE/emsdk" >> $GITHUB_ENV
+    - name: Checkout EMSDK
+      uses: actions/checkout@v3
+      with:
+        repository: emscripten-core/emsdk
+        path: ${{ env.EMSDK_DIR }}
+        ref: main
+    - name: Install EMSDK ${{ inputs.emsdk_version }}
+      shell: bash
+      run: $EMSDK_DIR/emsdk install ${{ inputs.emsdk_version }}
+    - name: Activate EMSDK ${{ inputs.emsdk_version }}
+      shell: bash
+      run: $EMSDK_DIR/emsdk activate ${{ inputs.emsdk_version }}

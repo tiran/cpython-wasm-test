@@ -1,0 +1,71 @@
+---
+name: "Common setup"
+description: |
+  Install build dependencies
+  setup env+ccache
+  checkout Python, build 'build' interpreter
+inputs:
+  python_version:
+    required: true
+    description: "Python version (git tag/branch)"
+  cache_suffix:
+    required: true
+    description: "Cache key suffix"
+runs:
+  using: "composite"
+  steps:
+    - name: Install build dependencies
+      shell: bash
+      run: |
+        set -e
+        sudo apt-get update
+        sudo apt-get -yq install build-essential pkg-config ccache zlib1g-dev
+    - name: Set env vars
+      shell: bash
+      run: |
+        echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
+        echo "MAKEFLAGS=-j$(nproc)" >> $GITHUB_ENV
+        echo "CPYTHON_DIR=$GITHUB_WORKSPACE/cpython" >> $GITHUB_ENV
+        echo "BUILD_PYTHON_DIR=$GITHUB_WORKSPACE/cpython/builddir/build" >> $GITHUB_ENV
+        echo "HOST_PYTHON_DIR=$GITHUB_WORKSPACE/cpython/builddir/host" >> $GITHUB_ENV
+        if test "${{ inputs.python_version }}" = "main"; then
+          echo "PYTHON_NAME=3.12-dev" >> $GITHUB_ENV
+        else
+          echo "PYTHON_NAME=${{ inputs.python_version }}" >> $GITHUB_ENV
+        fi
+    - name: Configure ccache action
+      uses: hendrikmuhs/ccache-action@v1
+      with:
+        key: py${{ inputs.python_version }}-${{ inputs.cache_suffix }}
+    - name: Checkout CPython
+      uses: actions/checkout@v3
+      with:
+        repository: python/cpython
+        path: ${{ env.CPYTHON_DIR }}
+        ref: "${{ inputs.python_version }}"
+    - name: Make directories
+      shell: bash
+      run: |
+        set -ex
+        mkdir -p $BUILD_PYTHON_DIR $HOST_PYTHON_DIR
+    - name: Build "build" Python
+      shell: bash
+      working-directory: "${{ env.BUILD_PYTHON_DIR }}"
+      run: |
+        set -ex
+        echo "::group::Run configure"
+        ${CPYTHON_DIR}/configure -C
+        echo "::endgroup::"
+
+        echo "::group::Run make"
+        make -j$(nproc)
+        echo "::endgroup::"
+    - name: Run pythoninfo
+      shell: bash
+      working-directory: "${{ env.BUILD_PYTHON_DIR }}"
+      run: make pythoninfo
+    - name: Set PYLIBDIR env var
+      shell: bash
+      run: |
+        set -ex
+        echo "PYLIBDIR=$($BUILD_PYTHON_DIR/python -c 'import sys; print(f"lib/python{sys.version_info.major}.{sys.version_info.minor}")')" >> $GITHUB_ENV

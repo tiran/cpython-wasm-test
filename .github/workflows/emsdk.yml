@@ -13,15 +13,15 @@ on:
   workflow_dispatch:
 
 jobs:
-  distros:
+  emsdk:
     name: "EMSDK ${{ matrix.emsdk_version }} on Python ${{ matrix.python_version }}, ${{ matrix.flavor }}"
     runs-on: "ubuntu-latest"
     strategy:
       fail-fast: false
       matrix:
         emsdk_version:
-          # latest == 3.1.17 passes all tests
-          # - "3.1.17"
+          # latest == 3.1.18 passes all tests
+          # - "3.1.18"
           - latest
           # tot is tip-of-tree
           - tot-upstream
@@ -32,167 +32,44 @@ jobs:
           - node-dl
           - node-pthreads
           - browser
-        include:
-          - flavor: node-dl
-            configure_args: >-
-              --with-emscripten-target=node
-              --enable-wasm-dynamic-linking
-              --disable-wasm-pthreads
-          - flavor: node-pthreads
-            configure_args: >-
-              --with-emscripten-target=node
-              --disable-wasm-dynamic-linking
-              --enable-wasm-pthreads
-          - flavor: browser
-            configure_args: >-
-                --with-emscripten-target=browser
-                --enable-wasm-dynamic-linking
-                --disable-wasm-pthreads
-          - python_version: "3.11"
-            python_name: "3.11"
-            python_libdir: "lib/python3.11"
-          - python_version: "main"
-            python_name: "3.12-dev"
-            python_libdir: "lib/python3.12"
     steps:
-      - name: Install build dependencies
-        run: |
-          set -e
-          sudo apt-get update
-          sudo apt-get -yq install build-essential pkg-config ccache zlib1g-dev
-      - name: Set env vars
-        run: |
-          echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
-          echo "MAKEFLAGS=-j$(nproc)" >> $GITHUB_ENV
-          echo "CPYTHON_DIR=$GITHUB_WORKSPACE/cpython" >> $GITHUB_ENV
-          echo "EMSDK_DIR=$GITHUB_WORKSPACE/emsdk" >> $GITHUB_ENV
-      - name: Configure ccache action
-        uses: hendrikmuhs/ccache-action@v1
+      - uses: actions/checkout@v2
+      - name: "Clone and build 'build' Python ${{ matrix.python_version }}"
+        uses: ./.github/actions/common_setup
+        id: common
         with:
-          key: py${{ matrix.python_version }}-emsdk$${{ matrix.emsdk_version }}
-      - name: Checkout EMSDK
-        uses: actions/checkout@v3
+          python_version: "${{ matrix.python_version }}"
+          cache_suffix: "emsdk${{ matrix.emsdk_version }}"
+      - name: "Install Emscripten ${{ matrix.emsdk_version }}"
+        uses: ./.github/actions/install_emsdk
+        id: install
         with:
-          repository: emscripten-core/emsdk
-          path: ${{ env.EMSDK_DIR }}
-          ref: main
-      - name: Checkout CPython
-        uses: actions/checkout@v3
+          emsdk_version: "${{ matrix.emsdk_version }}"
+      - name: "Build ${{ matrix.python_version }} ${{ matrix.flavor }}"
+        uses: ./.github/actions/build_emscripten
+        id: build
         with:
-          repository: python/cpython
-          path: ${{ env.CPYTHON_DIR }}
-          ref: "${{ matrix.python_version }}"
-      - name: Install EMSDK ${{ matrix.emsdk_version }}
-        run: $EMSDK_DIR/emsdk install ${{ matrix.emsdk_version }}
-      - name: Activate EMSDK ${{ matrix.emsdk_version }}
-        run: $EMSDK_DIR/emsdk activate ${{ matrix.emsdk_version }}
-      - name: Build "build" Python
-        run: |
-          set -e
-          mkdir -p $CPYTHON_DIR/builddir/build
-          cd $CPYTHON_DIR/builddir/build
-          ../../configure -C
-          make -j$(nproc)
-      - name: Build "host" Python
-        run: |
-          set -ex
-          . $EMSDK_DIR/emsdk_env.sh
-          export EM_COMPILER_WRAPPER=ccache
-          mkdir -p $CPYTHON_DIR/builddir/host
-          cd $CPYTHON_DIR/builddir/host
-          embuilder build zlib bzip2 sqlite3
-          CONFIG_SITE=../../Tools/wasm/config.site-wasm32-emscripten \
-              emconfigure ../../configure -C \
-                --build=$(../../config.guess) \
-                --host=wasm32-unknown-emscripten \
-                --with-build-python=$(pwd)/../build/python \
-                ${{ matrix.configure_args }}
-          emmake make
+          emsdk_version: "${{ matrix.emsdk_version }}"
+          flavor: "${{ matrix.flavor }}"
       - name: Run pythoninfo
+        shell: bash
+        working-directory: "${{ env.HOST_PYTHON_DIR }}"
         run: |
           set -e
           . $EMSDK_DIR/emsdk_env.sh
-          make -C $CPYTHON_DIR/builddir/host pythoninfo
+          make pythoninfo
         if: "${{ matrix.flavor != 'browser' }}"
       - name: Run tests
+        shell: bash
+        working-directory: "${{ env.HOST_PYTHON_DIR }}"
         run: |
           set -e
           . $EMSDK_DIR/emsdk_env.sh
-          make -C $CPYTHON_DIR/builddir/host buildbottest
-        if: "${{ matrix.flavor != 'browser' }}"
-      - name: Copy license, create commit.txt
-        run: |
-          set -e
-          pushd $CPYTHON_DIR/builddir/host
-          git --git-dir=$CPYTHON_DIR/.git rev-parse HEAD > commit.txt
-          cp $CPYTHON_DIR/LICENSE .
-          popd
-      - name: Copy stdlib (node)
-        run: |
-          set -e
-          mkdir -p $CPYTHON_DIR/builddir/host/${{ matrix.python_libdir }}
-          pushd $CPYTHON_DIR/builddir/host/${{ matrix.python_libdir }}
-          cp -R $CPYTHON_DIR/Lib/* .
-          rm -rf curses/ ctypes/test/ ensurepip/ distutils/
-          rm -rf lib2to3/ idle/ test/ multiprocessing/
-          rm -rf tkinter/ turtledemo/ venv/ unittest/test/
-          find -name __pycache__ | xargs rm -rf
-          popd
-        if: "${{ matrix.flavor != 'browser' }}"
-      - name: Copy stdlib (browser)
-        run: |
-          set -e
-          cp $CPYTHON_DIR/Tools/wasm/wasm_webserver.py $CPYTHON_DIR/builddir/host/
-        if: "${{ matrix.flavor == 'browser' }}"
-      - name: "Upload Emscripten Node artifacts"
-        uses: actions/upload-artifact@v2
+          make buildbottest
+        if: ${{ matrix.flavor != 'browser' }}
+      - name: "Package ${{ matrix.python_version }} ${{ matrix.flavor }}"
+        uses: ./.github/actions/package_emscripten
+        id: package
         with:
-          name: emscripten-${{ matrix.flavor }}_py${{ matrix.python_name }}_emsdk-${{ matrix.emsdk_version }}
-          retention-days: 7
-          path: |
-            ${{ env.CPYTHON_DIR }}/builddir/host/LICENSE
-            ${{ env.CPYTHON_DIR }}/builddir/host/commit.txt
-            ${{ env.CPYTHON_DIR }}/builddir/host/python.wasm
-            ${{ env.CPYTHON_DIR }}/builddir/host/python.worker.js
-            ${{ env.CPYTHON_DIR }}/builddir/host/python.js
-            ${{ env.CPYTHON_DIR }}/builddir/host/pybuilddir.txt
-            ${{ env.CPYTHON_DIR }}/builddir/host/build/lib.emscripten-wasm32-3.*/_sysconfigdata__emscripten_wasm32-emscripten.py
-            ${{ env.CPYTHON_DIR }}/builddir/host/build/lib.emscripten-wasm32-3.*/*.so
-            ${{ env.CPYTHON_DIR }}/builddir/host/${{ matrix.python_libdir }}
-          if-no-files-found: error
-        if: "${{ matrix.flavor != 'browser' }}"
-      - name: "Upload Emscripten Browser artifacts"
-        uses: actions/upload-artifact@v2
-        with:
-          name: emscripten-${{ matrix.flavor }}_py${{ matrix.python_name }}_emsdk-${{ matrix.emsdk_version }}
-          retention-days: 7
-          path: |
-            ${{ env.CPYTHON_DIR }}/builddir/host/LICENSE
-            ${{ env.CPYTHON_DIR }}/builddir/host/commit.txt
-            ${{ env.CPYTHON_DIR }}/builddir/host/python.data
-            ${{ env.CPYTHON_DIR }}/builddir/host/python.html
-            ${{ env.CPYTHON_DIR }}/builddir/host/python.js
-            ${{ env.CPYTHON_DIR }}/builddir/host/python.worker.js
-            ${{ env.CPYTHON_DIR }}/builddir/host/python.wasm
-            ${{ env.CPYTHON_DIR }}/builddir/host/wasm_webserver.py
-          if-no-files-found: error
-        if: "${{ matrix.flavor == 'browser' }}"
-      - name: "Upload build artifacts"
-        uses: actions/upload-artifact@v2
-        with:
-          name: build-emscripten-${{ matrix.flavor }}_py${{ matrix.python_name }}_emsdk-${{ matrix.emsdk_version }}
-          retention-days: 7
-          path: |
-            ${{ env.CPYTHON_DIR }}/builddir/host/config.log
-            ${{ env.CPYTHON_DIR }}/builddir/host/config.cache
-            ${{ env.CPYTHON_DIR }}/builddir/host/Makefile
-            ${{ env.CPYTHON_DIR }}/builddir/host/pyconfig.h
-            ${{ env.CPYTHON_DIR }}/builddir/host/libpython*.a
-            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/Setup.local
-            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/Setup.stdlib
-            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/config.c
-            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/_decimal/libmpdec/libmpdec.a
-            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/expat/libexpat.a
-            ${{ env.CPYTHON_DIR }}/builddir/host/Programs/python.o
-          if-no-files-found: error
-        if: false
+          emsdk_version: "${{ matrix.emsdk_version }}"
+          flavor: "${{ matrix.flavor }}"
