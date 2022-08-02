@@ -25,6 +25,11 @@ on:
         required: true
         default: "latest"
         description: "wasmtime version (for testing)"
+      install_wasix:
+        required: true
+        type: boolean
+        default: false
+        description: "Install WASIX for older releases?"
 
 jobs:
   create_release:
@@ -62,6 +67,24 @@ jobs:
         with:
           wasisdk_version: "${{ inputs.wasisdk_version }}"
           wasmtime_version: "${{ inputs.wasmtime_version }}"
+      - name: Fetch WASIX
+        uses: actions/checkout@v3
+        with:
+          repository: singlestore-labs/wasix
+          path: wasix
+        if: "${{ inputs.install_wasix }}"
+      - name: Build and install WASIX
+        shell: bash
+        run: |
+          set -e
+          cd wasix
+          make
+          sudo make install
+        if: "${{ inputs.install_wasix }}"
+      - name: Copy wasi-env
+        shell: bash
+        run: cp .github/wasi-env $CPYTHON_DIR/Tools/wasm/
+        if: "${{ inputs.install_wasix }}"
       - name: "Build ${{ inputs.python_version }}"
         uses: ./.github/actions/build_wasi
         id: build
