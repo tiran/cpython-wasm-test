@@ -1,0 +1,88 @@
+---
+name: "Build and test Emscripten"
+description: |
+  Build and test Emscripten
+inputs:
+  emsdk_version:
+    required: true
+    description: "Emscripten SDK version"
+  flavor:
+    required: true
+    description: "Build flavor"
+    type: choice
+    options:
+      - browser
+      - node-dl
+      - node-pthreads
+  configure_args:
+    required: false
+    description: "Extra args for configure script"
+runs:
+  using: "composite"
+  steps:
+    - name: Fetch Emscripten ports
+      shell: bash
+      working-directory: "${{ env.HOST_PYTHON_DIR }}"
+      run: |
+        set -ex
+        . $EMSDK_DIR/emsdk_env.sh
+        export EM_COMPILER_WRAPPER=ccache
+        embuilder build zlib bzip2 sqlite3
+    - name: configure "host" Python for browser
+      shell: bash
+      working-directory: "${{ env.HOST_PYTHON_DIR }}"
+      run: |
+        set -ex
+        . $EMSDK_DIR/emsdk_env.sh
+        export EM_COMPILER_WRAPPER=ccache
+        CONFIG_SITE=${CPYTHON_DIR}/Tools/wasm/config.site-wasm32-emscripten \
+            emconfigure ${CPYTHON_DIR}/configure -C \
+              --build=$(${CPYTHON_DIR}/config.guess) \
+              --host=wasm32-unknown-emscripten \
+              --with-build-python=${BUILD_PYTHON_DIR}/python \
+              --with-emscripten-target=browser \
+              --enable-wasm-dynamic-linking \
+              --disable-wasm-pthreads \
+              ${{ inputs.configure_args }}
+      if: "${{ inputs.flavor == 'browser' }}"
+    - name: configure "host" Python for node-dl
+      shell: bash
+      working-directory: "${{ env.HOST_PYTHON_DIR }}"
+      run: |
+        set -ex
+        . $EMSDK_DIR/emsdk_env.sh
+        export EM_COMPILER_WRAPPER=ccache
+        CONFIG_SITE=${CPYTHON_DIR}/Tools/wasm/config.site-wasm32-emscripten \
+            emconfigure ${CPYTHON_DIR}/configure -C \
+              --build=$(${CPYTHON_DIR}/config.guess) \
+              --host=wasm32-unknown-emscripten \
+              --with-build-python=${BUILD_PYTHON_DIR}/python \
+              --with-emscripten-target=node \
+              --enable-wasm-dynamic-linking \
+              --disable-wasm-pthreads \
+              ${{ inputs.configure_args }}
+      if: "${{ inputs.flavor == 'node-dl' }}"
+    - name: configure "host" Python for node-pthreads
+      shell: bash
+      working-directory: "${{ env.HOST_PYTHON_DIR }}"
+      run: |
+        set -ex
+        . $EMSDK_DIR/emsdk_env.sh
+        export EM_COMPILER_WRAPPER=ccache
+        CONFIG_SITE=${CPYTHON_DIR}/Tools/wasm/config.site-wasm32-emscripten \
+            emconfigure ${CPYTHON_DIR}/configure -C \
+              --build=$(${CPYTHON_DIR}/config.guess) \
+              --host=wasm32-unknown-emscripten \
+              --with-build-python=${BUILD_PYTHON_DIR}/python \
+              --with-emscripten-target=node \
+              --disable-wasm-dynamic-linking \
+              --enable-wasm-pthreads \
+              ${{ inputs.configure_args }}
+      if: "${{ inputs.flavor == 'node-pthreads' }}"
+    - name: Build "host" Python
+      shell: bash
+      working-directory: "${{ env.HOST_PYTHON_DIR }}"
+      run: |
+        set -ex
+        . $EMSDK_DIR/emsdk_env.sh
+        emmake make

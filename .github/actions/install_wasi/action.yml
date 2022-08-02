@@ -1,0 +1,39 @@
+---
+name: "Install WASI SDK & wasmtime"
+description: |
+  Install WASI SDK & wasmtime
+inputs:
+  wasisdk_version:
+    required: true
+    description: "WASI SDK version"
+  wasmtime_version:
+    required: true
+    description: "wasmtime version"
+runs:
+  using: "composite"
+  steps:
+    - name: Set env vars
+      shell: bash
+      run: |
+        echo "WASI_SDK=/opt/wasi-sdk" >> $GITHUB_ENV
+    - name: Install WASI SDK ${{ inputs.wasisdk_version }}
+      shell: bash
+      run: |
+        set -e
+        curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${{ inputs.wasisdk_version }}/wasi-sdk-${{ inputs.wasisdk_version }}.0-linux.tar.gz | sudo tar -xz -C /opt
+        sudo mv /opt/wasi-sdk-${{ inputs.wasisdk_version }}.0 $WASI_SDK
+        echo "PATH=$WASI_SDK/bin:$PATH" >> $GITHUB_ENV
+    - name: Install wasmtime
+      shell: bash
+      run: |
+        set -ex
+        curl https://wasmtime.dev/install.sh -sSf -o install-wasmtime.sh
+        chmod +x install-wasmtime.sh
+        ./install-wasmtime.sh --version ${{ inputs.wasmtime_version }}
+
+        mkdir -p $HOME/.local/bin
+        ln -sf $HOME/.wasmtime/bin/wasmtime $HOME/.local/bin/wasmtime
+        hash -r
+    - name: Check wasmtime
+      shell: bash
+      run: wasmtime --version

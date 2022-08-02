@@ -4,15 +4,10 @@ Test CPython WebAssembly builds with Emscripten SDK and WASI SDK. Build
 artifacts are available from latest scheduled *Emscripten nightly tests* and
 *WASI SDK nightly tests*. The WASM files include debug symbols.
 
-**NOTE** Due to limitation in GitHub's `actions/upload-artifact`, the zip
-files don't have a root directory. You can use `unzip -d` to extract the
-files into a subdirectory, e.g.
-`unzip emscripten-browser-py_3.11-emsdk_latest.zip -d emscripten-browser-py_3.11-emsdk_latest`.
-
 
 ## Emscripten build artifacts
 
-[Emscripten nightly tests](https://github.com/tiran/cpython-wasm-test/actions/workflows/emsdk.yml)
+[Emscripten nightly tests](https://github.com/tiran/cpython-wasm-test/actions/workflows/emsdk.yml?query=event%3Aschedule)
 
 The `emsdk-tot-upstream` builds are using Emscripte tip-of-tree (nightlies).
 
@@ -48,7 +43,7 @@ You may have to specify `--experimental-wasm-bigint` for older Node versions and
 
 ## WASI build artifacts
 
-[WASI nightly tests](https://github.com/tiran/cpython-wasm-test/actions/workflows/wasi.yml)
+[WASI nightly tests](https://github.com/tiran/cpython-wasm-test/actions/workflows/wasi.yml?query=event%3Aschedule)
 
 - `wasi_py3.11_wasisdk-16`: Python 3.11 with WASI-SDK 16
 - `wasi_py3.12-dev_wasisdk-16`: Python main branch (3.12-dev) with WASI-SDK 16

@@ -1,0 +1,106 @@
+---
+name: "Package Emscripten"
+description: |
+  Package Emscripten
+inputs:
+  emsdk_version:
+    required: true
+    description: "Emscripten SDK version"
+  flavor:
+    required: true
+    description: "Build flavor"
+    type: choice
+    options:
+      - browser
+      - node-dl
+      - node-pthreads
+runs:
+  using: "composite"
+  steps:
+    - name: Set release env vars
+      shell: bash
+      run: |
+        set -e
+
+        RELEASE_NAME="emscripten-${{ inputs.flavor }}_py${{ env.PYTHON_NAME }}_emsdk-${{ inputs.emsdk_version }}"
+        RELEASE_BASE="$HOME/release"
+        RELEASE_DIR="$RELEASE_BASE/$RELEASE_NAME"
+        RELEASE_ZIP="$HOME/$RELEASE_NAME.zip"
+
+        echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
+        echo "RELEASE_BASE=$RELEASE_BASE" >> $GITHUB_ENV
+        echo "RELEASE_DIR=$RELEASE_DIR" >> $GITHUB_ENV
+        echo "RELEASE_ZIP=$RELEASE_ZIP" >> $GITHUB_ENV
+
+        echo "::set-output name=release_name::$RELEASE_NAME"
+        echo "::set-output name=release_zipfile::$RELEASE_ZIP"
+
+        mkdir -p $RELEASE_DIR
+    - name: Assemble release (common)
+      shell: bash
+      working-directory: "${{ env.RELEASE_DIR }}"
+      run: |
+        set -ex
+        git --git-dir=$CPYTHON_DIR/.git rev-parse HEAD > commit.txt
+        cp $CPYTHON_DIR/LICENSE .
+
+        cp $HOST_PYTHON_DIR/python.* .
+        cp $HOST_PYTHON_DIR/pybuilddir.txt .
+        cp $HOST_PYTHON_DIR/pyconfig.h .
+    - name: Assemble release (node)
+      shell: bash
+      working-directory: "${{ env.RELEASE_DIR }}"
+      run: |
+        set -ex
+        mkdir -p $PYLIBDIR
+        pushd $PYLIBDIR
+        cp $HOST_PYTHON_DIR/build/lib.emscripten-wasm32-3.*/_sysconfigdata*.py .
+        if test "${{ inputs.flavor }}" = "node-dl"; then
+          cp $HOST_PYTHON_DIR/build/lib.emscripten-wasm32-3.*/*.so .
+        fi
+        cp -a $CPYTHON_DIR/Lib/* .
+        rm -rf curses/ ctypes/test/ ensurepip/ distutils/
+        rm -rf lib2to3/ idlelib/ test/ multiprocessing/
+        rm -rf tkinter/ turtledemo/ venv/ unittest/test/
+        popd
+
+        find -name __pycache__ | xargs rm -rf
+      if: "${{ inputs.flavor != 'browser' }}"
+    - name: Assemble release (browser)
+      shell: bash
+      working-directory: "${{ env.RELEASE_DIR }}"
+      run: |
+        set -ex
+        cp $CPYTHON_DIR/Tools/wasm/wasm_webserver.py .
+      if: "${{ inputs.flavor == 'browser' }}"
+    - name: Create release zip
+      shell: bash
+      working-directory: "${{ env.RELEASE_BASE }}"
+      run: |
+        set -ex
+        zip -9 -r -v $RELEASE_ZIP $RELEASE_NAME
+    - name: "Upload Emscripten artifacts"
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ env.RELEASE_NAME }}
+        retention-days: 7
+        path: ${{ env.RELEASE_BASE }}/**
+        if-no-files-found: error
+    - name: "Upload build artifacts"
+      uses: actions/upload-artifact@v2
+      with:
+        name: build-emscripten-${{ inputs.flavor }}_py${{ env.PYTHON_NAME }}_emsdk-${{ inputs.emsdk_version }}
+        retention-days: 7
+        path: |
+          ${{ env.HOST_PYTHON_DIR }}/config.log
+          ${{ env.HOST_PYTHON_DIR }}/config.cache
+          ${{ env.HOST_PYTHON_DIR }}/Makefile
+          ${{ env.HOST_PYTHON_DIR }}/libpython*.a
+          ${{ env.HOST_PYTHON_DIR }}/Modules/Setup.local
+          ${{ env.HOST_PYTHON_DIR }}/Modules/Setup.stdlib
+          ${{ env.HOST_PYTHON_DIR }}/Modules/config.c
+          ${{ env.HOST_PYTHON_DIR }}/Modules/_decimal/libmpdec/libmpdec.a
+          ${{ env.HOST_PYTHON_DIR }}/Modules/expat/libexpat.a
+          ${{ env.HOST_PYTHON_DIR }}/Programs/python.o
+        if-no-files-found: error
+      if: "false"

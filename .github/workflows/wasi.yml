@@ -27,131 +27,40 @@ jobs:
         wasmtime_version:
           - "v0.39.1"
           - "latest"
-        include:
-          - python_version: "3.11"
-            python_name: "3.11"
-            python_libdir: "lib/python3.11"
-          - python_version: "main"
-            python_name: "3.12-dev"
-            python_libdir: "lib/python3.12"
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install build dependencies
-        run: |
-          set -e
-          sudo apt-get update
-          sudo apt-get -yq install build-essential pkg-config ccache zlib1g-dev curl
-      - name: Set env vars
-        run: |
-          echo "PATH=/usr/lib/ccache:$PATH" >> $GITHUB_ENV
-          echo "MAKEFLAGS=-j$(nproc)" >> $GITHUB_ENV
-          echo "CPYTHON_DIR=$GITHUB_WORKSPACE/cpython" >> $GITHUB_ENV
-          echo "WASI_SDK=/opt/wasi-sdk" >> $GITHUB_ENV
-      - name: Configure ccache action
-        uses: hendrikmuhs/ccache-action@v1
+      - uses: actions/checkout@v2
+      - name: "Clone and build 'build' Python ${{ matrix.python_version }}"
+        uses: ./.github/actions/common_setup
+        id: common
         with:
-          key: py${{ matrix.python_version }}-wasi$${{ matrix.wasisdk_version }}
-      - name: Install WASI SDK ${{ matrix.wasisdk_version }}
-        run: |
-          set -e
-          curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${{ matrix.wasisdk_version }}/wasi-sdk-${{ matrix.wasisdk_version }}.0-linux.tar.gz | sudo tar -xz -C /opt
-          sudo mv /opt/wasi-sdk-${{ matrix.wasisdk_version }}.0 $WASI_SDK
-          echo "PATH=$WASI_SDK/bin:$PATH" >> $GITHUB_ENV
-      - name: Install wasmtime
-        run: |
-          set -e
-          curl https://wasmtime.dev/install.sh -sSf -o install-wasmtime.sh
-          chmod +x install-wasmtime.sh
-          ./install-wasmtime.sh --version ${{ matrix.wasmtime_version }}
-          echo "PATH=$HOME/.wasmtime/bin:$PATH" >> $GITHUB_ENV
-      - name: Check wasmtime
-        run: wasmtime --version
-      - name: Checkout CPython
-        uses: actions/checkout@v3
+          python_version: "${{ matrix.python_version }}"
+          cache_suffix: "wasi${{ matrix.wasisdk_version }}"
+      - name: Install WASI SDK & wasmtime
+        uses: ./.github/actions/install_wasi
+        id: install
         with:
-          repository: python/cpython
-          path: ${{ env.CPYTHON_DIR }}
-          ref: "${{ matrix.python_version }}"
-      - name: Build "build" Python
-        run: |
-          set -e
-          mkdir -p $CPYTHON_DIR/builddir/build
-          cd $CPYTHON_DIR/builddir/build
-          ../../configure -C
-          make -j$(nproc)
-      - name: Build "host" Python
+          wasisdk_version: "${{ matrix.wasisdk_version }}"
+          wasmtime_version: "${{ matrix.wasmtime_version }}"
+      - name: "Build ${{ matrix.python_version }}"
+        uses: ./.github/actions/build_wasi
+        id: build
+        with:
+          wasisdk_version: "${{ matrix.wasisdk_version }}"
+          wasmtime_version: "${{ matrix.wasmtime_version }}"
+      - name: Run pythoninfo
+        shell: bash
+        working-directory: "${{ env.HOST_PYTHON_DIR }}"
+        run: make pythoninfo
+      - name: Run tests
+        shell: bash
+        working-directory: "${{ env.HOST_PYTHON_DIR }}"
         run: |
           set -ex
-
-          mkdir -p $CPYTHON_DIR/builddir/host
-          cd $CPYTHON_DIR/builddir/host
-
-          CONFIG_SITE=../../Tools/wasm/config.site-wasm32-wasi \
-            ../../Tools/wasm/wasi-env \
-            ../../configure -C \
-              --host=wasm32-unknown-wasi \
-              --build=$(../../config.guess) \
-              --with-build-python=$(pwd)/../build/python
-
-          make -j$(nproc)
-
-          # sentinel for getpath.py
-          touch $CPYTHON_DIR/Modules/Setup.local
-      - name: Run pythoninfo
-        run: make -C $CPYTHON_DIR/builddir/host pythoninfo
-      - name: Run tests
-        run: make -C $CPYTHON_DIR/builddir/host buildbottest
-      - name: Copy license, create commit.txt
-        run: |
-          set -e
-          pushd $CPYTHON_DIR/builddir/host
-          git --git-dir=$CPYTHON_DIR/.git rev-parse HEAD > commit.txt
-          cp $CPYTHON_DIR/LICENSE .
-          popd
-      - name: Copy stdlib
-        run: |
-          set -e
-          mkdir -p $CPYTHON_DIR/builddir/host/${{ matrix.python_libdir }}
-          pushd $CPYTHON_DIR/builddir/host/${{ matrix.python_libdir }}
-          cp -R $CPYTHON_DIR/Lib/* .
-          rm -rf curses/ ctypes/test/ ensurepip/ distutils/
-          rm -rf lib2to3/ idle/ test/ multiprocessing/
-          rm -rf tkinter/ turtledemo/ venv/ unittest/test/
-          find -name __pycache__ | xargs rm -rf
-          popd
-        if: "${{ matrix.wasmtime_version == 'latest' }}"
-      - name: "Upload WASI artifacts"
-        uses: actions/upload-artifact@v2
+          make buildbottest TESTOPTS="-i '*.test_srcdir'"
+      - name: "Package ${{ matrix.python_version }}"
+        uses: ./.github/actions/package_wasi
+        id: package
         with:
-          name: wasi_py${{ matrix.python_name }}_wasisdk-${{ matrix.wasisdk_version }}
-          retention-days: 7
-          path: |
-            ${{ env.CPYTHON_DIR }}/builddir/host/LICENSE
-            ${{ env.CPYTHON_DIR }}/builddir/host/commit.txt
-            ${{ env.CPYTHON_DIR }}/builddir/host/python.wasm
-            ${{ env.CPYTHON_DIR }}/builddir/host/pybuilddir.txt
-            ${{ env.CPYTHON_DIR }}/builddir/host/build/lib.wasi-wasm32-3.*/_sysconfigdata__wasi_wasm32-wasi.py
-            ${{ env.CPYTHON_DIR }}/builddir/host/${{ matrix.python_libdir }}
-          if-no-files-found: error
+          wasisdk_version: "${{ matrix.wasisdk_version }}"
+          wasmtime_version: "${{ matrix.wasmtime_version }}"
         if: "${{ matrix.wasmtime_version == 'latest' }}"
-      - name: "Upload build artifacts"
-        uses: actions/upload-artifact@v2
-        with:
-          name: build-wasi_py${{ matrix.python_name }}_wasisdk-${{ matrix.wasisdk_version }}
-          retention-days: 7
-          path: |
-            ${{ env.CPYTHON_DIR }}/builddir/host/config.log
-            ${{ env.CPYTHON_DIR }}/builddir/host/config.cache
-            ${{ env.CPYTHON_DIR }}/builddir/host/Makefile
-            ${{ env.CPYTHON_DIR }}/builddir/host/pyconfig.h
-            ${{ env.CPYTHON_DIR }}/builddir/host/libpython*.a
-            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/Setup.local
-            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/Setup.stdlib
-            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/config.c
-            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/_decimal/libmpdec/libmpdec.a
-            ${{ env.CPYTHON_DIR }}/builddir/host/Modules/expat/libexpat.a
-            ${{ env.CPYTHON_DIR }}/builddir/host/Programs/python.o
-          if-no-files-found: error
-        # if: "${{ matrix.wasmtime_version == 'latest' }}"
-        if: false
