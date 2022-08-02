@@ -72,7 +72,7 @@ jobs:
         shell: bash
         working-directory: "${{ env.HOST_PYTHON_DIR }}"
         run: make pythoninfo
-      - name: "Package ${{ matrix.python_version }}"
+      - name: "Package ${{ inputs.python_tag }}"
         uses: ./.github/actions/package_wasi
         id: package
         with:
@@ -83,8 +83,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.package.output.release_zipfile }}
-          asset_name: ${{ steps.package.output.release_name }}.zip
+          asset_path: ${{ env.RELEASE_ZIP }}
+          asset_name: ${{ env.RELEASE_NAME }}.zip
           asset_content_type: application/zip
 
   emsdk:
@@ -125,11 +125,11 @@ jobs:
           . $EMSDK_DIR/emsdk_env.sh
           make pythoninfo
         if: "${{ matrix.flavor != 'browser' }}"
-      - name: "Package ${{ matrix.python_version }} ${{ matrix.flavor }}"
+      - name: "Package ${{ inputs.python_tag }} ${{ matrix.flavor }}"
         uses: ./.github/actions/package_emscripten
         id: package
         with:
-          emsdk_version: "${{ matrix.emsdk_version }}"
+          emsdk_version: "${{ inputs.emsdk_version }}"
           flavor: "${{ matrix.flavor }}"
       - name: Upload artifact
         uses: actions/upload-release-asset@v1
@@ -137,6 +137,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.package.output.release_zipfile }}
-          asset_name: ${{ steps.package.output.release_name }}.zip
+          asset_path: ${{ env.RELEASE_ZIP }}
+          asset_name: ${{ env.RELEASE_NAME }}.zip
           asset_content_type: application/zip

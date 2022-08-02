@@ -24,9 +24,6 @@ runs:
         echo "RELEASE_DIR=$RELEASE_DIR" >> $GITHUB_ENV
         echo "RELEASE_ZIP=$RELEASE_ZIP" >> $GITHUB_ENV
 
-        echo "::set-output name=release_name::$RELEASE_NAME"
-        echo "::set-output name=release_zipfile::$RELEASE_ZIP"
-
         mkdir -p $RELEASE_DIR
     - name: Assemble release
       shell: bash
