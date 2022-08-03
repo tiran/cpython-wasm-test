@@ -37,6 +37,16 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
+      - name: Mangle Python tag
+        shell: bash
+        run: |
+          PYTHON_TAG=${{ inputs.python_tag }}
+          case "$PYTHON_TAG" in
+            main) echo "PYTHON_TAG=3.12dev" >> $GITHUB_ENV;;
+            3.11) echo "PYTHON_TAG=3.11dev" >> $GITHUB_ENV;;
+            v*) echo "PYTHON_TAG=${PYTHON_VERSION:1}" >> $GITHUB_ENV;;
+            *) echo "PYTHON_TAG=$PYTHON_VERSION" >> $GITHUB_ENV;;
+          esac
       - name: Create release
         uses: actions/create-release@v1
         id: create_release
@@ -45,7 +55,52 @@ jobs:
           prerelease: ${{ inputs.prerelease }}
           release_name: ${{ inputs.python_tag }}
           tag_name: ${{ inputs.python_tag }}
-          body: "Unofficial WASM builds for Python ${{ inputs.python_tag }}"
+          body: |
+            # Unofficial, experimental WebAssembly builds for Python ${{ env.PYTHON_TAG }}
+
+            See [availability notes](https://docs.python.org/3.11/library/intro.html) and [WASM README.md](https://github.com/python/cpython/blob/main/Tools/wasm/README.md) for platform limitations.
+
+            ## `Python-${{ env.PYTHON_TAG }}-wasm32-emscripten-${{ inputs.emsdk_version }}-browser.zip`
+
+            Python in the browser.
+
+            The files must be served from a web server. You can use the `./wasm_webserver.py` script to run a local web server and access the browser REPL from http://localhost:8000/python.html
+            
+            ## `Python-${{ env.PYTHON_TAG }}-wasm32-emscripten-${{ inputs.emsdk_version }}-node-dl.zip`
+
+            Python on NodeJS (dynamic linking enabled).
+
+            Run with:
+
+            ```shell
+            node python.js
+            ```
+
+            For older NodeJS you may have to use
+
+            ```shell
+            node --experimental-wasm-bigint python.js
+            ```
+
+            ## `Python-${{ env.PYTHON_TAG }}-wasm32-emscripten-${{ inputs.emsdk_version }}-node-pthreads.zip`
+
+            Python on NodeJS (pthread emulation enabled).
+
+            For older NodeJS you may have to use
+
+            ```shell
+            node --experimental-wasm-bigint --experimental-wasm-threads --experimental-wasm-bulk-memory python.js
+            ```
+
+            ## `Python-${{ env.PYTHON_TAG }}-wasm32-wasi-${{ inputs.wasisdk_version }}.zip`
+
+            Python on WASI (WebAssembly System Interface).
+
+            ```shell
+            wasmtime run --dir . -- python.wasm
+            ```
+
+            Needs a recent version of [wasmtime](https://wasmtime.dev/).
         env:
           GITHUB_TOKEN: ${{ github.token }}
 

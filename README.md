@@ -17,7 +17,7 @@ The `emsdk-tot-upstream` builds are using Emscripte tip-of-tree (nightlies).
 - `Python-3.11dev-wasm32-emscripten-3.1.18-browser`: Python main branch (3.12), Emscripten SDK 3.1.18
 
 The files must be served from a web server. You can use the
-`wasm_webserver.py` script to run a local web server and
+`./wasm_webserver.py` script to run a local web server and
 access the browser REPL from http://localhost:8000/python.html
 
 ### Emscripte NodeJS target
