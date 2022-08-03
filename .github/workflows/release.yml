@@ -44,8 +44,8 @@ jobs:
           case "$PYTHON_TAG" in
             main) echo "PYTHON_TAG=3.12dev" >> $GITHUB_ENV;;
             3.11) echo "PYTHON_TAG=3.11dev" >> $GITHUB_ENV;;
-            v*) echo "PYTHON_TAG=${PYTHON_VERSION:1}" >> $GITHUB_ENV;;
-            *) echo "PYTHON_TAG=$PYTHON_VERSION" >> $GITHUB_ENV;;
+            v*) echo "PYTHON_TAG=${PYTHON_TAG:1}" >> $GITHUB_ENV;;
+            *) echo "PYTHON_TAG=$PYTHON_TAG" >> $GITHUB_ENV;;
           esac
       - name: Create release
         uses: actions/create-release@v1
@@ -65,7 +65,7 @@ jobs:
             Python in the browser.
 
             The files must be served from a web server. You can use the `./wasm_webserver.py` script to run a local web server and access the browser REPL from http://localhost:8000/python.html
-            
+
             ## `Python-${{ env.PYTHON_TAG }}-wasm32-emscripten-${{ inputs.emsdk_version }}-node-dl.zip`
 
             Python on NodeJS (dynamic linking enabled).
