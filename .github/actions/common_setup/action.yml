@@ -28,11 +28,14 @@ runs:
         echo "CPYTHON_DIR=$GITHUB_WORKSPACE/cpython" >> $GITHUB_ENV
         echo "BUILD_PYTHON_DIR=$GITHUB_WORKSPACE/cpython/builddir/build" >> $GITHUB_ENV
         echo "HOST_PYTHON_DIR=$GITHUB_WORKSPACE/cpython/builddir/host" >> $GITHUB_ENV
-        if test "${{ inputs.python_version }}" = "main"; then
-          echo "PYTHON_NAME=3.12-dev" >> $GITHUB_ENV
-        else
-          echo "PYTHON_NAME=${{ inputs.python_version }}" >> $GITHUB_ENV
-        fi
+
+        PYTHON_VERSION=${{ inputs.python_version }}
+        case "$PYTHON_VERSION" in
+          main) echo "PYTHON_NAME=3.12dev" >> $GITHUB_ENV;;
+          3.11) echo "PYTHON_NAME=3.11dev" >> $GITHUB_ENV;;
+          v*) echo "PYTHON_NAME=${PYTHON_VERSION:1}" >> $GITHUB_ENV;;
+          *) echo "PYTHON_NAME=$PYTHON_VERSION" >> $GITHUB_ENV;;
+        esac
     - name: Configure ccache action
       uses: hendrikmuhs/ccache-action@v1
       with:
