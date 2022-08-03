@@ -13,8 +13,8 @@ The `emsdk-tot-upstream` builds are using Emscripte tip-of-tree (nightlies).
 
 ### Emscripten browser target
 
-- `emscripten-browser_py3.11_emsdk-latest`: Python 3.11 branch, latest Emscripten SDK
-- `emscripten-browser_py3.12-dev_emsdk-latest`: Python main branch (3.12-dev), latest Emscripten SDK
+- `Python-3.11dev-wasm32-emscripten-3.1.18-browser`: Python 3.11 branch, Emscripten SDK 3.1.18
+- `Python-3.11dev-wasm32-emscripten-3.1.18-browser`: Python main branch (3.12), Emscripten SDK 3.1.18
 
 The files must be served from a web server. You can use the
 `wasm_webserver.py` script to run a local web server and
@@ -22,14 +22,14 @@ access the browser REPL from http://localhost:8000/python.html
 
 ### Emscripte NodeJS target
 
-- `emscripten-node-dl_py3.11_emsdk-latest`: WASM dynamic linking, Python
-  3.11 branch, latest Emscripten SDK
-- `emscripten-node-dl_py3.12-dev_emsdk-latest`: WASM dynamic linking, Python
-  main branch (3.12-dev), latest Emscripten SDK
-- `emscripten-node-pthreads_py3.12-dev_emsdk-latest`: WASM pthreads emulation,
-  Python main branch (3.12-dev), latest Emscripten SDK
-- `emscripten-node-pthreads_py3.11_emsdk-latest`: WASM pthreads emulation,
-  Python 3.11 branch, latest Emscripten SDK
+- `Python-3.11dev-wasm32-emscripten-3.1.18-node-dl`: WASM dynamic linking, Python
+  3.11 branch, Emscripten SDK 3.1.18
+- `Python-3.12dev-wasm32-emscripten-3.1.18-node-dl`: WASM dynamic linking, Python
+  main branch (3.12), Emscripten SDK 3.1.18
+- `Python-3.11dev-wasm32-emscripten-3.1.18-node-pthreads`: WASM pthreads emulation,
+  Python 3.11 branch, Emscripten SDK 3.1.18
+- `Python-3.12dev-wasm32-emscripten-3.1.18-node-pthreads`: WASM pthreads emulation,
+  Python main branch (3.12), Emscripten SDK 3.1.18
 
 Run:
 
@@ -45,8 +45,8 @@ You may have to specify `--experimental-wasm-bigint` for older Node versions and
 
 [WASI nightly tests](https://github.com/tiran/cpython-wasm-test/actions/workflows/wasi.yml?query=event%3Aschedule)
 
-- `wasi_py3.11_wasisdk-16`: Python 3.11 with WASI-SDK 16
-- `wasi_py3.12-dev_wasisdk-16`: Python main branch (3.12-dev) with WASI-SDK 16
+- `Python-3.11dev-wasm32-wasi-16`: Python 3.11 with WASI-SDK 16
+- `Python-3.12dev-wasm32-wasi-16`: Python main branch (3.12-dev) with WASI-SDK 16
 
 Run:
 

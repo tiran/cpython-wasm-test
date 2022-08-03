@@ -22,7 +22,12 @@ runs:
       run: |
         set -e
 
-        RELEASE_NAME="emscripten-${{ inputs.flavor }}_py${{ env.PYTHON_NAME }}_emsdk-${{ inputs.emsdk_version }}"
+        EMSDK_VERSION=${{ inputs.emsdk_version }}
+        if test "$EMSDK_VERSION" = "latest"; then
+          EMSDK_VERSION=$(cat ${EMSDK_DIR}/upstream/emscripten/emscripten-version.txt | sed 's,",,g')
+        fi
+
+        RELEASE_NAME="Python-${{ env.PYTHON_NAME }}-wasm32-emscripten-${EMSDK_VERSION}-${{ inputs.flavor }}"
         RELEASE_BASE="$HOME/release"
         RELEASE_DIR="$RELEASE_BASE/$RELEASE_NAME"
         RELEASE_ZIP="$HOME/$RELEASE_NAME.zip"
