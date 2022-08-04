@@ -1,9 +1,15 @@
-# CPython WebAssembly tests
+# CPython WebAssembly nightly tests & unofficial builds
 
 Test CPython WebAssembly builds with Emscripten SDK and WASI SDK. Build
 artifacts are available from latest scheduled *Emscripten nightly tests* and
-*WASI SDK nightly tests*. The WASM files include debug symbols.
+*WASI SDK nightly tests*.
 
+The project also provides [unofficial builds](https://github.com/tiran/cpython-wasm-test/releases)
+of CPython for Emscripten and WASI.
+
+See [availability notes](https://docs.python.org/3.11/library/intro.html) and
+[WASM README.md](https://github.com/python/cpython/blob/main/Tools/wasm/README.md)
+for platform limitations.
 
 ## Emscripten build artifacts
 
