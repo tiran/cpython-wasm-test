@@ -138,7 +138,7 @@ jobs:
         if: "${{ inputs.install_wasix }}"
       - name: Copy wasi-env
         shell: bash
-        run: cp .github/wasi-env $CPYTHON_DIR/Tools/wasm/
+        run: cp scripts/wasi-env $CPYTHON_DIR/Tools/wasm/
         if: "${{ inputs.install_wasix }}"
       - name: "Build ${{ inputs.python_version }}"
         uses: ./.github/actions/build_wasi

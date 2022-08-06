@@ -37,3 +37,6 @@ runs:
     - name: Check wasmtime
       shell: bash
       run: wasmtime --version
+    - name: Install pre-build WASI libraries
+      shell: bash
+      run: cp -a ./wasi-sysroot/* $WASI_SDK/share/wasi-sysroot/
