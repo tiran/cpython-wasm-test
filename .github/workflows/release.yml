@@ -150,6 +150,12 @@ jobs:
         shell: bash
         working-directory: "${{ env.HOST_PYTHON_DIR }}"
         run: make pythoninfo
+      - name: Run tests
+        shell: bash
+        working-directory: "${{ env.HOST_PYTHON_DIR }}"
+        run: |
+          set -ex
+          make buildbottest TESTOPTS="-i '*.test_srcdir' -j2"
       - name: "Package ${{ inputs.python_tag }}"
         uses: ./.github/actions/package_wasi
         id: package
@@ -203,6 +209,14 @@ jobs:
           . $EMSDK_DIR/emsdk_env.sh
           make pythoninfo
         if: "${{ matrix.flavor != 'browser' }}"
+      - name: Run tests
+        shell: bash
+        working-directory: "${{ env.HOST_PYTHON_DIR }}"
+        run: |
+          set -e
+          . $EMSDK_DIR/emsdk_env.sh
+          make buildbottest TESTOPTS="-j2"
+        if: ${{ matrix.flavor != 'browser' }}
       - name: "Package ${{ inputs.python_tag }} ${{ matrix.flavor }}"
         uses: ./.github/actions/package_emscripten
         id: package

@@ -56,7 +56,7 @@ jobs:
         working-directory: "${{ env.HOST_PYTHON_DIR }}"
         run: |
           set -ex
-          make buildbottest TESTOPTS="-i '*.test_srcdir'"
+          make buildbottest TESTOPTS="-i '*.test_srcdir' -j2"
       - name: "Package ${{ matrix.python_version }}"
         uses: ./.github/actions/package_wasi
         id: package
