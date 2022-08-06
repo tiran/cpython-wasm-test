@@ -65,7 +65,7 @@ jobs:
         run: |
           set -e
           . $EMSDK_DIR/emsdk_env.sh
-          make buildbottest
+          make buildbottest TESTOPTS="-j2"
         if: ${{ matrix.flavor != 'browser' }}
       - name: "Package ${{ matrix.python_version }} ${{ matrix.flavor }}"
         uses: ./.github/actions/package_emscripten
