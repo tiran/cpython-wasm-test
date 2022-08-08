@@ -29,9 +29,11 @@ jobs:
           - "3.11"
           - "main"
         flavor:
-          - node-dl
-          - node-pthreads
           - browser
+          - browser-debug
+          - node-dl
+          - node-dl-debug
+          - node-pthreads
     steps:
       - uses: actions/checkout@v2
       - name: "Clone and build 'build' Python ${{ matrix.python_version }}"
@@ -58,7 +60,7 @@ jobs:
           set -e
           . $EMSDK_DIR/emsdk_env.sh
           make pythoninfo
-        if: "${{ matrix.flavor != 'browser' }}"
+        if: ${{ matrix.flavor == 'node-dl' || matrix.flavor == 'node-dl-debug' || matrix.flavor == 'node-pthreads' }}
       - name: Run tests
         shell: bash
         working-directory: "${{ env.HOST_PYTHON_DIR }}"
@@ -66,7 +68,7 @@ jobs:
           set -e
           . $EMSDK_DIR/emsdk_env.sh
           make buildbottest TESTOPTS="-j2"
-        if: ${{ matrix.flavor != 'browser' }}
+        if: ${{ matrix.flavor == 'node-dl' || matrix.flavor == 'node-pthreads' }}
       - name: "Package ${{ matrix.python_version }} ${{ matrix.flavor }}"
         uses: ./.github/actions/package_emscripten
         id: package

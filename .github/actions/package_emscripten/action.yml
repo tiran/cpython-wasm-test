@@ -12,7 +12,9 @@ inputs:
     type: choice
     options:
       - browser
+      - browser-debug
       - node-dl
+      - node-dl-debug
       - node-pthreads
 runs:
   using: "composite"
