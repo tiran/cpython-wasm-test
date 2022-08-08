@@ -66,6 +66,8 @@ jobs:
 
             The files must be served from a web server. You can use the `./wasm_webserver.py` script to run a local web server and access the browser REPL from http://localhost:8000/python.html
 
+            The `*browser-debug.zip` is a debug build with additional debug symbols and fewer optimizations.
+
             ## `Python-${{ env.PYTHON_TAG }}-wasm32-emscripten-${{ inputs.emsdk_version }}-node-dl.zip`
 
             Python on NodeJS (dynamic linking enabled).
@@ -81,6 +83,8 @@ jobs:
             ```shell
             node --experimental-wasm-bigint python.js
             ```
+
+            The `*node-dl-debug.zip` is a debug build with additional debug symbols and fewer optimizations.
 
             ## `Python-${{ env.PYTHON_TAG }}-wasm32-emscripten-${{ inputs.emsdk_version }}-node-pthreads.zip`
 
@@ -179,9 +183,11 @@ jobs:
       fail-fast: false
       matrix:
         flavor:
-          - node-dl
-          - node-pthreads
           - browser
+          - browser-debug
+          - node-dl
+          - node-dl-debug
+          - node-pthreads
     steps:
       - uses: actions/checkout@v2
       - name: "Clone and build 'build' Python ${{ inputs.python_tag }}"
@@ -208,7 +214,7 @@ jobs:
           set -e
           . $EMSDK_DIR/emsdk_env.sh
           make pythoninfo
-        if: "${{ matrix.flavor != 'browser' }}"
+        if: ${{ matrix.flavor == 'node-dl' || matrix.flavor == 'node-dl-debug' || matrix.flavor == 'node-pthreads' }}
       - name: Run tests
         shell: bash
         working-directory: "${{ env.HOST_PYTHON_DIR }}"
@@ -216,7 +222,7 @@ jobs:
           set -e
           . $EMSDK_DIR/emsdk_env.sh
           make buildbottest TESTOPTS="-j2"
-        if: ${{ matrix.flavor != 'browser' }}
+        if: ${{ matrix.flavor == 'node-dl' || matrix.flavor == 'node-pthreads' }}
       - name: "Package ${{ inputs.python_tag }} ${{ matrix.flavor }}"
         uses: ./.github/actions/package_emscripten
         id: package
