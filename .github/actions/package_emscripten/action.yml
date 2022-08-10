@@ -26,7 +26,7 @@ runs:
 
         EMSDK_VERSION=${{ inputs.emsdk_version }}
         if test "$EMSDK_VERSION" = "latest"; then
-          EMSDK_VERSION=$(cat ${EMSDK_DIR}/upstream/emscripten/emscripten-version.txt | sed 's,",,g')
+          EMSDK_VERSION=$(cat ${EMSDK}/upstream/emscripten/emscripten-version.txt | sed 's,",,g')
         fi
 
         RELEASE_NAME="Python-${{ env.PYTHON_NAME }}-wasm32-emscripten-${EMSDK_VERSION}-${{ inputs.flavor }}"

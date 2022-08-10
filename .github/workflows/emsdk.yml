@@ -42,11 +42,9 @@ jobs:
         with:
           python_version: "${{ matrix.python_version }}"
           cache_suffix: "emsdk${{ matrix.emsdk_version }}"
-      - name: "Install Emscripten ${{ matrix.emsdk_version }}"
-        uses: ./.github/actions/install_emsdk
-        id: install
+      - uses: mymindstorm/setup-emsdk@v11
         with:
-          emsdk_version: "${{ matrix.emsdk_version }}"
+          version: ${{ matrix.emsdk_version }}
       - name: "Build ${{ matrix.python_version }} ${{ matrix.flavor }}"
         uses: ./.github/actions/build_emscripten
         id: build
@@ -56,18 +54,12 @@ jobs:
       - name: Run pythoninfo
         shell: bash
         working-directory: "${{ env.HOST_PYTHON_DIR }}"
-        run: |
-          set -e
-          . $EMSDK_DIR/emsdk_env.sh
-          make pythoninfo
+        run: make pythoninfo
         if: ${{ matrix.flavor == 'node-dl' || matrix.flavor == 'node-dl-debug' || matrix.flavor == 'node-pthreads' }}
       - name: Run tests
         shell: bash
         working-directory: "${{ env.HOST_PYTHON_DIR }}"
-        run: |
-          set -e
-          . $EMSDK_DIR/emsdk_env.sh
-          make buildbottest TESTOPTS="-j2"
+        run: make buildbottest TESTOPTS="-j2"
         if: ${{ matrix.flavor == 'node-dl' || matrix.flavor == 'node-pthreads' }}
       - name: "Package ${{ matrix.python_version }} ${{ matrix.flavor }}"
         uses: ./.github/actions/package_emscripten
