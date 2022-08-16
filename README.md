@@ -42,6 +42,8 @@ access the browser REPL from http://localhost:8000/python.html
   Python 3.11 branch, Emscripten SDK 3.1.18
 - `Python-3.12dev-wasm32-emscripten-3.1.18-node-pthreads`: WASM pthreads emulation,
   Python main branch (3.12), Emscripten SDK 3.1.18
+- `Python-3.12dev-wasm64-emscripten-tot-upstream-node`: wasm64-emscripten (MEMORY64),
+  Python main branch (3.12), Emscripten SDK tip-of-tree.
 
 Run:
 
@@ -52,6 +54,8 @@ node python.js
 You may have to specify `--experimental-wasm-bigint` for older Node versions and
 `--experimental-wasm-threads --experimental-wasm-bulk-memory` for pthread builds.
 
+**NOTE** `wasm64-emscripten` is experimental and requires Node >= 16 and
+`--wasm-experimental-memory64` options.
 
 ## WASI build artifacts
 

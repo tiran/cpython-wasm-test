@@ -16,6 +16,7 @@ inputs:
       - node-dl
       - node-dl-debug
       - node-pthreads
+      - wasm64-node
 runs:
   using: "composite"
   steps:
@@ -29,7 +30,11 @@ runs:
           EMSDK_VERSION=$(cat ${EMSDK}/upstream/emscripten/emscripten-version.txt | sed 's,",,g')
         fi
 
-        RELEASE_NAME="Python-${{ env.PYTHON_NAME }}-wasm32-emscripten-${EMSDK_VERSION}-${{ inputs.flavor }}"
+        if test "${{ inputs.flavor }}" = "wasm64-node"; then
+          RELEASE_NAME="Python-${{ env.PYTHON_NAME }}-wasm64-emscripten-${EMSDK_VERSION}-node"
+        else
+          RELEASE_NAME="Python-${{ env.PYTHON_NAME }}-wasm32-emscripten-${EMSDK_VERSION}-${{ inputs.flavor }}"
+        fi
         RELEASE_BASE="$HOME/release"
         RELEASE_DIR="$RELEASE_BASE/$RELEASE_NAME"
         RELEASE_ZIP="$HOME/$RELEASE_NAME.zip"
@@ -58,9 +63,9 @@ runs:
         set -ex
         mkdir -p $PYLIBDIR
         pushd $PYLIBDIR
-        cp $HOST_PYTHON_DIR/build/lib.emscripten-wasm32-3.*/_sysconfigdata*.py .
+        cp $HOST_PYTHON_DIR/build/lib.emscripten-wasm??-3.1?/_sysconfigdata*.py .
         if test "${{ inputs.flavor }}" = "node-dl"; then
-          cp $HOST_PYTHON_DIR/build/lib.emscripten-wasm32-3.*/*.so .
+          cp $HOST_PYTHON_DIR/build/lib.emscripten-wasm??-3.1?/*.so .
         fi
         cp -a $CPYTHON_DIR/Lib/* .
         rm -rf curses/ ctypes/test/ ensurepip/ distutils/
@@ -69,14 +74,14 @@ runs:
         popd
 
         find -name __pycache__ | xargs rm -rf
-      if: "${{ inputs.flavor != 'browser' }}"
+      if: "${{ inputs.flavor != 'browser' && inputs.flavor != 'browser-debug' }}"
     - name: Assemble release (browser)
       shell: bash
       working-directory: "${{ env.RELEASE_DIR }}"
       run: |
         set -ex
         cp $CPYTHON_DIR/Tools/wasm/wasm_webserver.py .
-      if: "${{ inputs.flavor == 'browser' }}"
+      if: "${{ inputs.flavor == 'browser' || inputs.flavor == 'browser-debug' }}"
     - name: Create release zip
       shell: bash
       working-directory: "${{ env.RELEASE_BASE }}"

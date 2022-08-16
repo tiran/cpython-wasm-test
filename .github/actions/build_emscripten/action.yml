@@ -16,6 +16,7 @@ inputs:
       - node-dl
       - node-dl-debug
       - node-pthreads
+      - wasm64-node
   configure_args:
     required: false
     description: "Extra args for configure script"
@@ -26,10 +27,6 @@ runs:
       shell: bash
       run: |
         echo "EM_COMPILER_WRAPPER=ccache" >> $GITHUB_ENV
-    - name: Fetch Emscripten ports
-      shell: bash
-      working-directory: "${{ env.HOST_PYTHON_DIR }}"
-      run: embuilder build zlib bzip2 sqlite3
     - name: configure "host" Python for browser
       shell: bash
       working-directory: "${{ env.HOST_PYTHON_DIR }}"
@@ -100,6 +97,27 @@ runs:
               ${{ inputs.configure_args }} \
               CONFIG_SITE=${CPYTHON_DIR}/Tools/wasm/config.site-wasm32-emscripten
       if: "${{ inputs.flavor == 'node-pthreads' }}"
+    - name: Install Node 16 for WASM64
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+        check-latest: true
+        cache: 'npm'
+      if: "${{ inputs.flavor == 'wasm64-node' }}"
+    - name: configure "host" Python for wasm64-node
+      shell: bash
+      working-directory: "${{ env.HOST_PYTHON_DIR }}"
+      run: |
+        emconfigure ${CPYTHON_DIR}/configure -C \
+              --build=$(${CPYTHON_DIR}/config.guess) \
+              --host=wasm64-unknown-emscripten \
+              --with-build-python=${BUILD_PYTHON_DIR}/python \
+              --with-emscripten-target=node \
+              --disable-wasm-dynamic-linking \
+              --disable-wasm-pthreads \
+              ${{ inputs.configure_args }} \
+              CONFIG_SITE=${CPYTHON_DIR}/Tools/wasm/config.site-wasm32-emscripten
+      if: "${{ inputs.flavor == 'wasm64-node' }}"
     - name: Build "host" Python
       shell: bash
       working-directory: "${{ env.HOST_PYTHON_DIR }}"

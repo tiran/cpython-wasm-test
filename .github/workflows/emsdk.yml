@@ -14,7 +14,7 @@ on:
 
 jobs:
   emsdk:
-    name: "EMSDK ${{ matrix.emsdk_version }} on Python ${{ matrix.python_version }}, ${{ matrix.flavor }}"
+    name: "EMSDK ${{ matrix.emsdk_version }} Python ${{ matrix.python_version }} ${{ matrix.flavor }}"
     runs-on: "ubuntu-latest"
     strategy:
       fail-fast: false
@@ -34,6 +34,13 @@ jobs:
           - node-dl
           - node-dl-debug
           - node-pthreads
+          - wasm64-node
+        exclude:
+          # wasm64-node only on tot-upstream + main
+          - flavor: wasm64-node
+            emsdk_version: latest
+          - flavor: wasm64-node
+            python_version: 3.11
     steps:
       - uses: actions/checkout@v2
       - name: "Clone and build 'build' Python ${{ matrix.python_version }}"
@@ -55,12 +62,12 @@ jobs:
         shell: bash
         working-directory: "${{ env.HOST_PYTHON_DIR }}"
         run: make pythoninfo
-        if: ${{ matrix.flavor == 'node-dl' || matrix.flavor == 'node-dl-debug' || matrix.flavor == 'node-pthreads' }}
+        if: ${{ matrix.flavor == 'node-dl' || matrix.flavor == 'node-dl-debug' || matrix.flavor == 'node-pthreads' || matrix.flavor == 'wasm64-node' }}
       - name: Run tests
         shell: bash
         working-directory: "${{ env.HOST_PYTHON_DIR }}"
         run: make buildbottest TESTOPTS="-j2"
-        if: ${{ matrix.flavor == 'node-dl' || matrix.flavor == 'node-pthreads' }}
+        if: ${{ matrix.flavor == 'node-dl' || matrix.flavor == 'node-pthreads' || matrix.flavor == 'wasm64-node' }}
       - name: "Package ${{ matrix.python_version }} ${{ matrix.flavor }}"
         uses: ./.github/actions/package_emscripten
         id: package
