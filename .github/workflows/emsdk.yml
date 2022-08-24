@@ -49,9 +49,13 @@ jobs:
         with:
           python_version: "${{ matrix.python_version }}"
           cache_suffix: "emsdk${{ matrix.emsdk_version }}"
-      - uses: mymindstorm/setup-emsdk@v11
+      - name: "Install EMSDK ${{ matrix.emsdk_version }}"
+        uses: mymindstorm/setup-emsdk@v11
         with:
           version: ${{ matrix.emsdk_version }}
+      - name: Print emcc version
+        shell: bash
+        run: emcc -v
       - name: "Build ${{ matrix.python_version }} ${{ matrix.flavor }}"
         uses: ./.github/actions/build_emscripten
         id: build
