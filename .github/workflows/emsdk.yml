@@ -20,9 +20,10 @@ jobs:
       fail-fast: false
       matrix:
         emsdk_version:
-          # latest == 3.1.18 passes all tests
-          # - "3.1.18"
-          - latest
+          # 3.1.19 passes all tests
+          - "3.1.19"
+          # latest == 3.1.20 is broken
+          #- latest
           # tot is tip-of-tree
           - tot-upstream
         python_version:
@@ -49,9 +50,13 @@ jobs:
         with:
           python_version: "${{ matrix.python_version }}"
           cache_suffix: "emsdk${{ matrix.emsdk_version }}"
-      - uses: mymindstorm/setup-emsdk@v11
+      - name: "Install EMSDK ${{ matrix.emsdk_version }}"
+        uses: mymindstorm/setup-emsdk@v11
         with:
           version: ${{ matrix.emsdk_version }}
+      - name: Print emcc version
+        shell: bash
+        run: emcc -v
       - name: "Build ${{ matrix.python_version }} ${{ matrix.flavor }}"
         uses: ./.github/actions/build_emscripten
         id: build

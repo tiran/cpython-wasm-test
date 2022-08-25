@@ -6,11 +6,11 @@ on:
     inputs:
       python_tag:
         required: true
-        default: "v3.11.0b5"
+        default: "v3.11.0rc2"
         description: "Python release tag"
       emsdk_version:
         required: true
-        default: "3.1.18"
+        default: "3.1.19"
         description: "Emscripten SDK version"
       wasisdk_version:
         required: true
