@@ -20,10 +20,8 @@ jobs:
       fail-fast: false
       matrix:
         emsdk_version:
-          # 3.1.19 passes all tests
-          - "3.1.19"
-          # latest == 3.1.20 is broken
-          #- latest
+          # latest == 3.1.21 passes all tests
+          - latest
           # tot is tip-of-tree
           - tot-upstream
         python_version:
@@ -37,9 +35,7 @@ jobs:
           - node-pthreads
           - wasm64-node
         exclude:
-          # wasm64-node only on tot-upstream + main
-          - flavor: wasm64-node
-            emsdk_version: latest
+          # wasm64-node only on main
           - flavor: wasm64-node
             python_version: 3.11
     steps:
