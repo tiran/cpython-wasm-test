@@ -10,7 +10,7 @@ on:
         description: "Python release tag"
       emsdk_version:
         required: true
-        default: "3.1.21"
+        default: "3.1.22"
         description: "Emscripten SDK version"
       wasisdk_version:
         required: true

@@ -25,7 +25,7 @@ jobs:
           - "3.11"
           - "main"
         wasmtime_version:
-          - "v0.39.1"
+          - "v1.0.0"
           - "latest"
     steps:
       - uses: actions/checkout@v2

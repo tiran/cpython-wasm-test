@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         emsdk_version:
-          # latest == 3.1.21 passes all tests
+          # latest == 3.1.22 passes all tests
           - latest
           # tot is tip-of-tree
           - tot-upstream
