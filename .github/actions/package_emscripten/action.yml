@@ -89,14 +89,14 @@ runs:
         set -ex
         zip -9 -r -v $RELEASE_ZIP $RELEASE_NAME
     - name: "Upload Emscripten artifacts"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: ${{ env.RELEASE_NAME }}
         retention-days: 7
         path: ${{ env.RELEASE_BASE }}/**
         if-no-files-found: error
     - name: "Upload build artifacts"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: build-emscripten-${{ inputs.flavor }}_py${{ env.PYTHON_NAME }}_emsdk-${{ inputs.emsdk_version }}
         retention-days: 7

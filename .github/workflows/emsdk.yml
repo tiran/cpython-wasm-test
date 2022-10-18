@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         emsdk_version:
-          # latest == 3.1.22 passes all tests
+          # latest == 3.1.24 passes all tests
           - latest
           # tot is tip-of-tree
           - tot-upstream
@@ -39,7 +39,7 @@ jobs:
           - flavor: wasm64-node
             python_version: 3.11
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: "Clone and build 'build' Python ${{ matrix.python_version }}"
         uses: ./.github/actions/common_setup
         id: common

@@ -53,14 +53,14 @@ runs:
         set -ex
         zip -9 -r -v $HOME/${RELEASE_NAME}.zip $RELEASE_NAME
     - name: "Upload WASI artifacts"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: ${{ env.RELEASE_NAME }}
         retention-days: 7
         path: ${{ env.RELEASE_BASE }}/**
         if-no-files-found: error
     - name: "Upload build artifacts"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: build-wasi_py${{ env.PYTHON_NAME }}_wasisdk-${{ inputs.wasisdk_version }}
         retention-days: 7
