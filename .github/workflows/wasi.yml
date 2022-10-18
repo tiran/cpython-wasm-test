@@ -25,10 +25,10 @@ jobs:
           - "3.11"
           - "main"
         wasmtime_version:
-          - "v1.0.0"
+          - "v1.0.1"
           - "latest"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: "Clone and build 'build' Python ${{ matrix.python_version }}"
         uses: ./.github/actions/common_setup
         id: common

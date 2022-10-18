@@ -37,7 +37,7 @@ runs:
           *) echo "PYTHON_NAME=$PYTHON_VERSION" >> $GITHUB_ENV;;
         esac
     - name: Configure ccache action
-      uses: hendrikmuhs/ccache-action@v1
+      uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: py${{ inputs.python_version }}-${{ inputs.cache_suffix }}
     - name: Checkout CPython
