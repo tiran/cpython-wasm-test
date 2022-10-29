@@ -62,4 +62,4 @@ jobs:
         id: package
         with:
           wasisdk_version: "${{ matrix.wasisdk_version }}"
-        if: "${{ matrix.wasmtime_version == 'latest' }}"
+        if: "${{ matrix.wasmtime_version != 'latest' }}"
