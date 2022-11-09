@@ -6,6 +6,10 @@ inputs:
   wasisdk_version:
     required: true
     description: "WASI SDK version"
+  include_build_artifacts:
+    required: false
+    default: false
+    description: "Include build artifacts (such as `.a` files)"
 runs:
   using: "composite"
   steps:
@@ -77,4 +81,4 @@ runs:
           ${{ env.HOST_PYTHON_DIR }}/Modules/expat/libexpat.a
           ${{ env.HOST_PYTHON_DIR }}/Programs/python.o
         if-no-files-found: error
-      if: "false"
+      if: inputs.include_build_artifacts
